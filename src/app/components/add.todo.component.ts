@@ -35,6 +35,7 @@ export class AddTodoComponent {
     }
 
     onSubmit(f:HTMLInputElement){
+        if(this.service.state.isSearching) return
         this.service.addTodo(f.value);
         f.value='' 
     }
