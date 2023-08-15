@@ -12,7 +12,7 @@ const _action$ = new Actions(_dispatcher);
  *Every `StateController` has the following features:
  *- Dispatching actions
  *- Filtering actions
- *- Adding effeccts
+ *- Adding effects
  *- Communications among controllers (although controllers are independents)
  *- RxDart full features
  *
@@ -54,7 +54,7 @@ export abstract class StateController<S> {
   }
   /**
    * This function is fired whenever action dispatches from any of the controllers.
-   * Note: if you override this method and have call to `remoteState/remoreController` on this instance, don't forget to cal `super.onAction(actio`
+   * Note: if you override this method and have call to `remoteState/remoteController` on this instance, don't forget to cal `super.onAction(action)`
    */
   onAction(action: Action) {
     if (
@@ -68,7 +68,7 @@ export abstract class StateController<S> {
   /**
    * This function is fired after instantiating the controller.
    */
-  onInit() {}
+  onInit() { }
   /**
    *Return the part of the current state of the controller as a Observable<S>.
    */
@@ -79,11 +79,11 @@ export abstract class StateController<S> {
     } else {
       throw new TypeError(
         `Unexpected type '${typeof mapFn}' in select operator,` +
-          ` expected 'string' or 'function'`
+        ` expected 'string' or 'function'`
       );
     }
     return mapped$.pipe(
-      distinctUntilChanged((prev, curren) => shallowEqual(prev, curren))
+      distinctUntilChanged((prev, current) => shallowEqual(prev, current))
     );
   }
 
@@ -93,7 +93,7 @@ export abstract class StateController<S> {
 
   get stream$(): Observable<S> {
     return this._store.pipe(
-      distinctUntilChanged((prev, curren) => shallowEqual(prev, curren))
+      distinctUntilChanged((prev, current) => shallowEqual(prev, current))
     );
   }
 
@@ -137,9 +137,11 @@ export abstract class StateController<S> {
   emit(state: Partial<S>) {
     if (isPlainObj(state)) {
       this._store.next(Object.assign({}, this.state, state));
-      //return;
+      return;
     }
-    //this._store.next(state as any);
+    if (state !== undefined) {
+      this._store.next(state as any);
+    }
   }
 
   importState(state: S) {
@@ -155,7 +157,7 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get state of any active controlller.
+   *Using this function you can get state of any active controller.
    * @param controllerType should be a sub type of StateController class.
    * @returns A promise of the state of the given type.
    *
@@ -171,15 +173,15 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get reference of any active controlller.
+   *Using this function you can get reference of any active controller.
    * @param controllerType should be a sub type of StateController class.
    * @returns A Observable&lt;Controller> of the given type.
    *`Example`
    *
    *This example returns todo list filtered by searchCategory.
-   *We need `SearchCategoryController` stream combining with `TodoContrroller's` stream:
+   *We need `SearchCategoryController` stream combining with `TodoController's` stream:
    *```ts
-   * const ctrlStream$ =remoteController<SearchCategoryController>();
+   * const ctrlStream$ = remoteController<SearchCategoryController>();
    *```
    */
   remoteController<S extends StateController<any>>(
@@ -189,7 +191,7 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get `stream$` of any active controlller.
+   *Using this function you can get `stream$` of any active controller.
    *
    * @param controllerType should be a sub type of StateController class.
    * @returns A Observable&lt;S> of the given type.
@@ -224,7 +226,7 @@ export abstract class StateController<S> {
   effectOnAction(aStream: Observable<S>) {
     this._sub.add(aStream.subscribe((data) => this.emit(data)));
   }
-  /**This is a clean up funcction. */
+  /**This is a clean up function. */
   dispose(): void {
     this._sub.unsubscribe();
   }
@@ -259,5 +261,5 @@ function isPlainObj(o: any) {
   return o ? typeof o == 'object' && o.constructor == Object : false;
 }
 class RemoteControllerAction implements Action {
-  constructor(public type: (state: any) => void, public payload: any) {}
+  constructor(public type: (state: any) => void, public payload: any) { }
 }
