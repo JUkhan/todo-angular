@@ -1,42 +1,50 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { AppService } from '../app.service';
-import { map } from 'rxjs';
-import {SearchTodo} from '../app.service.types'
-import { NgForm } from '@angular/forms';
+import { Subject, map, takeUntil } from 'rxjs';
+import { SearchTodo } from '../app.service.types'
+import { FormControl, NgForm } from '@angular/forms';
 
 @Component({
-    selector: 'app-add-todo',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    template: `
- <form #f="ngForm" (ngSubmit)="onSubmit(t)" class="mb-4">
+  selector: 'app-add-todo',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <form (ngSubmit)="onSubmit()" class="mb-4">
       <div class="flex mt-4">
-        <input #t (input)="changingText(t.value)"
+        <input [formControl]="searchCtrl" 
           class="shadow appearance-none border rounded w-full py-2 px-3 mr-4 text-grey-darker"
           type="text" 
           name="task"
           placeholder="{{placeholderText$|async}}"
         />
-        <input type="checkbox" (click)="service.toggleSearch()" [checked]="service.isSearching$|async">
+        <input type="checkbox" [formControl]="checkboxCtrl" >
       </div>
     </form>
   `,
 
 })
-export class AddTodoComponent {
-    constructor(public service: AppService) {
+export class AddTodoComponent implements OnDestroy {
+  public searchCtrl: FormControl = new FormControl('');
+  public checkboxCtrl: FormControl = new FormControl(false);
+  private cleanup$ = new Subject();
 
-    }
+  constructor(public service: AppService) {
+    this.searchCtrl.valueChanges.pipe(takeUntil(this.cleanup$)).subscribe(value => this.service.dispatch(new SearchTodo(value)))
+    this.checkboxCtrl.valueChanges.pipe(takeUntil(this.cleanup$)).subscribe(_ => {
+      this.service.dispatch(new SearchTodo(''))
+      this.service.toggleSearch()
+      this.searchCtrl.setValue('')
+    })
+  }
+  ngOnDestroy(): void {
+    this.cleanup$.next(null)
+  }
 
-    placeholderText$ = this.service.isSearching$.pipe(
-        map(isTrue => isTrue ? 'Searching...' : 'What needs to be done?'))
+  placeholderText$ = this.service.isSearching$.pipe(
+    map(isTrue => isTrue ? 'Searching...' : 'What needs to be done?'))
 
-    changingText(task:string){
-        this.service.dispatch(new SearchTodo(task))
-    }
-
-    onSubmit(f:HTMLInputElement){
-        if(this.service.state.isSearching) return
-        this.service.addTodo(f.value);
-        f.value='' 
-    }
+  onSubmit() {
+    if (this.service.state.isSearching) return
+    this.service.addTodo(this.searchCtrl.value);
+    this.searchCtrl.setValue('')
+  }
 }

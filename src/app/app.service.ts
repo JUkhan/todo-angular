@@ -94,7 +94,7 @@ export class AppService extends StateController<IAppService>{
             filter(_ => this.state.isSearching),
             map(search => search.searchText),
             startWith('')
-        )
+        ),
     ]).pipe(
         map(([todos, visibility, searchText]) => {
             if (searchText) {
