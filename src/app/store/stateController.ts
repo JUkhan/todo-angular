@@ -9,16 +9,9 @@ const _dispatcher = new BehaviorSubject<Action>({ type: '@INIT' });
 const _action$ = new Actions(_dispatcher);
 
 /**
- *Every `StateController` has the following features:
- *- Dispatching actions
- *- Filtering actions
- *- Adding effects
- *- Communications among controllers (although controllers are independents)
- *- RxDart full features
- *
- *Every `StateController` requires an initial state which will be the state of the `StateController` before `emit` has been called.
- *
- *The current state of a `StateController` can be accessed via the `state` getter.
+ * Represents a base StateController class for managing state and actions.
+ * typeparam S The type of the state managed by the controller.
+ * 
  *```ts
  *class CounterState extends StateController<number>{
  *
@@ -38,9 +31,21 @@ const _action$ = new Actions(_dispatcher);
  *```
  */
 export abstract class StateController<S> {
+
+  /**
+   * The BehaviorSubject that holds the current state.
+   */
   private _store: BehaviorSubject<S>;
+
+  /**
+   * The subscription to actions and effects.
+   */
   private _sub: Subscription;
 
+  /**
+   * Creates an instance of StateController.
+   * @param {S} initialState - The initial state of the controller.
+   */
   constructor(initialState: S) {
     this._store = new BehaviorSubject<S>(initialState);
 
@@ -52,9 +57,10 @@ export abstract class StateController<S> {
       this.onInit();
     }, 0);
   }
+
   /**
-   * This function is fired whenever action dispatches from any of the controllers.
-   * Note: if you override this method and have call to `remoteState/remoteController` on this instance, don't forget to cal `super.onAction(action)`
+   * Handles incoming actions.
+   * @param {Action} action - The action to be handled.
    */
   onAction(action: Action) {
     if (
@@ -69,9 +75,13 @@ export abstract class StateController<S> {
    * This function is fired after instantiating the controller.
    */
   onInit() { }
+
   /**
-   *Return the part of the current state of the controller as a Observable<S>.
-   */
+ * Selects a slice of the state and returns it as an observable.
+ * @typeparam T The type of the selected slice.
+ * @param {function(state: S): T} mapFn - The function to map the state to the desired slice.
+ * @returns {Observable<T>} An observable of the selected slice of the state.
+ */
   select<T = any>(mapFn: (state: S) => T): Observable<T> {
     let mapped$;
     if (typeof mapFn === 'function') {
@@ -79,7 +89,7 @@ export abstract class StateController<S> {
     } else {
       throw new TypeError(
         `Unexpected type '${typeof mapFn}' in select operator,` +
-        ` expected 'string' or 'function'`
+        ` expected 'function'`
       );
     }
     return mapped$.pipe(
@@ -88,9 +98,9 @@ export abstract class StateController<S> {
   }
 
   /**
-   * Return the current state of the controller as a Observable<S>.
-   */
-
+  * Gets an observable stream of the controller's state with distinct value changes.
+  * @returns {Observable<S>} An observable stream of the controller's state with distinct value changes.
+  */
   get stream$(): Observable<S> {
     return this._store.pipe(
       distinctUntilChanged((prev, current) => shallowEqual(prev, current))
@@ -98,29 +108,25 @@ export abstract class StateController<S> {
   }
 
   /**
-   * Return the `Acction` instance.
-   *
-   *So that you can filter the actions those are dispatches throughout
-   *the application. And also making effect/s on it.
-   */
+  * Gets the Actions instance used for dispatching actions.
+  * @returns {Actions} The Actions instance for dispatching actions.
+  */
   get action$(): Actions {
     return _action$;
   }
 
   /**
-   * Return the current state of the controller.
-   */
+  * Gets the current state of the controller.
+  * @returns {S} The current state of the controller.
+  */
   get state(): S {
     return this._store.value;
   }
 
-  /**Dispatching an action is just like firing an event.
-   *
-   *Whenever the acction is dispatched it notifies all the controllers
-   *if you override the `onAction(action Action)` method.
-   *
-   * A simple way to communicate among the controllers.
-   */
+  /**
+  * Dispatches an action to update the controller's state.
+  * @param {string | Action} actionName - The name of the action or an Action instance.
+  */
   dispatch(actionName: string | Action): void {
     if (typeof actionName === 'object') {
       _dispatcher.next(actionName);
@@ -130,10 +136,9 @@ export abstract class StateController<S> {
   }
 
   /**
-   * This fuction merge the input `state` param with the current `store state`.
-   * @param state You might pass partial state.
-   *
-   */
+  * Emits a new state or a partial state update to the controller's current state.
+  * @param {Partial<S>} state - The new state or partial state update to be emitted.
+  */
   emit(state: Partial<S>) {
     if (isPlainObj(state)) {
       this._store.next(Object.assign({}, this.state, state));
@@ -144,10 +149,21 @@ export abstract class StateController<S> {
     }
   }
 
+  /**
+ * Imports a new state and updates the controller's current state.
+ * @param {S} state - The new state to be imported.
+ */
   importState(state: S) {
     this._store.next(state);
   }
 
+  /**
+ * Retrieves remote data from a controller instance by dispatching a remote action.
+ * @typeparam S - The type of the state managed by the remote controller.
+ * @param {new () => S} controllerType - The constructor of the remote controller.
+ * @returns {Promise<S>} A promise that resolves to the retrieved remote data.
+ * @private
+ */
   private remoteData<S extends StateController<any>>(
     controllerType: new () => S
   ): Promise<S> {
@@ -157,9 +173,11 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get state of any active controller.
-   * @param controllerType should be a sub type of StateController class.
-   * @returns A promise of the state of the given type.
+   * Retrieves the remote state from a controller instance by invoking remote data retrieval.
+   * @typeparam S - The type of the state to be retrieved.
+   * @typeparam T - The type of the remote controller.
+   * @param {new () => T} controllerType - The constructor of the remote controller.
+   * @returns {Promise<S>} A promise that resolves to the remote state.
    *
    *```ts
    *const category = await remoteState<SearchCategory>(SearchCategoryController);
@@ -173,15 +191,18 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get reference of any active controller.
-   * @param controllerType should be a sub type of StateController class.
-   * @returns A Observable&lt;Controller> of the given type.
+   * Creates an observable of a remote controller instance by invoking a remote data retrieval.
+   * @typeparam S The type of the state managed by the remote controller.
+   * @param {new () => S} controllerType - The constructor of the remote controller.
+   * @returns {Observable<S>} An observable of the remote controller instance.
+   * 
    *`Example`
    *
-   *This example returns todo list filtered by searchCategory.
-   *We need `SearchCategoryController` stream combining with `TodoController's` stream:
    *```ts
-   * const ctrlStream$ = remoteController<SearchCategoryController>();
+   * this.remoteController(AppService)
+   *    .pipe(
+   *     mergeMap(s=>s.select(state=>state.todos.length))
+   *    ).subscribe(num=>this.emit(num))
    *```
    */
   remoteController<S extends StateController<any>>(
@@ -191,16 +212,25 @@ export abstract class StateController<S> {
   }
 
   /**
-   *Using this function you can get `stream$` of any active controller.
-   *
-   * @param controllerType should be a sub type of StateController class.
-   * @returns A Observable&lt;S> of the given type.
+   * Creates an observable stream of data by merging the stream of a remote controller's state.
+   * @typeparam S The type of the state being observed.
+   * @typeparam T The type of the remote controller.
+   * @param {new () => T} controllerType - The constructor of the remote controller.
+   * @returns {Observable<S>} An observable stream of the merged remote controller's state.
    *
    *`Example`
    *
+   *```
+   *this.effectOnAction(
+   *     this.action$.whereType('inc').pipe(
+   *         withLatestFrom(this.remoteStream<IAppService>(AppService)),
+   *         map(([_, state])=>state.todos.length)
+   *    )
+   *);
+   *this.remoteStream<IAppService>(AppService).pipe(
+   *     map(state=>state.todos.length)
+   *    ).subscribe(console.log)
    *
-   *```ts
-   * const searchCategoryStream$ = remoteStream<SearchCategory>(SearchCategoryController);
    *```
    */
   remoteStream<S, T extends StateController<any> = any>(
@@ -210,7 +240,11 @@ export abstract class StateController<S> {
       mergeMap((ctrl) => ctrl.stream$)
     );
   }
+
   /**
+   *Applies an effect to the provided stream of data, emitting the data to the controller's state.
+   * @param {Observable<S>} aStream - The stream of data to apply the effect on.
+   * 
    * Use this function inside `onInit()` method only
    *
    *`Example`
@@ -226,12 +260,19 @@ export abstract class StateController<S> {
   effectOnAction(aStream: Observable<S>) {
     this._sub.add(aStream.subscribe((data) => this.emit(data)));
   }
-  /**This is a clean up function. */
+
+  /**
+   * Disposes of the subscription to actions and effects.
+   */
   dispose(): void {
     this._sub.unsubscribe();
   }
+
   /**
+   * Defines an effect function that transforms an observable input into
+   * a partial state update and sets up the subscription.
    * ```ts
+   *
    * Example
    *
    * searchProduct = this.effect<string>(name$ => name$.pipe(
@@ -256,10 +297,33 @@ export abstract class StateController<S> {
       subject.next(arg);
     };
   }
+
+  /**
+  * Tears down a subscription by adding it to the internal collection.
+  * @param {Subscription} subscription - The subscription to tear down.
+  * @returns {void}
+  */
+  tearDown(subscription: Subscription): void {
+    if (subscription instanceof Subscription) {
+      this._sub.add(subscription);
+    }
+  }
+
 }
+
+/**
+ * Checks if the provided value is a plain object.
+ * @param {any} o - The value to check.
+ * @returns {boolean} Returns true if the value is a plain object, otherwise false.
+ */
 function isPlainObj(o: any) {
   return o ? typeof o == 'object' && o.constructor == Object : false;
 }
+
+/**
+ * Represents an action that can be dispatched to remote controllers.
+ * @implements {Action}
+ */
 class RemoteControllerAction implements Action {
   constructor(public type: (state: any) => void, public payload: any) { }
 }

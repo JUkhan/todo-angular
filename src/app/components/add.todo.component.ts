@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { AppService } from '../app.service';
 import { Subject, map, takeUntil } from 'rxjs';
 import { SearchTodo } from '../app.service.types'
-import { FormControl, NgForm } from '@angular/forms';
+import { FormControl } from '@angular/forms';
 
 @Component({
   selector: 'app-add-todo',

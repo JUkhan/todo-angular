@@ -1,12 +1,13 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { AppService } from '../app.service';
+import { CounterService } from '../counter.service';
 
 @Component({
     selector: 'app-todo-container',
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
 <div class="bg-slate-100 rounded-xl p-8 dark:bg-slate-800">
-    <h1 className="text-grey-darkest">Todo List</h1>
+    <h1 className="text-grey-darkest">Todo List {{counterService.stream$|async}}</h1>
     <app-loading/>
     <app-add-todo/>
     <app-toolbar/>
@@ -21,5 +22,5 @@ import { AppService } from '../app.service';
 
 })
 export class TodoContainerComponent {
-    constructor(public service:AppService){}
+    constructor(public service:AppService, public counterService: CounterService){}
 }

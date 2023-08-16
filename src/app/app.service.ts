@@ -44,6 +44,7 @@ export class AppService extends StateController<IAppService>{
         const todos = this.state.todos.concat();
         todos.push({ id: todos.length + 1, task, completed: false })
         this.throttle({ todos, message: { type: 'info', message: 'Todo added successfully' } });
+        
     }
 
     updateTodo(id: number) {
