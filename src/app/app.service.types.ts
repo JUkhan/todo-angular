@@ -24,25 +24,13 @@ export type IAppService = {
     isSearching:boolean,
     loading:boolean,
 }
-class ActionBase{
-    type=''
-    constructor(type=''){
-        this.type=type
-    }
+
+export class SearchTodo  {
+    constructor(public searchText: string, public type:string='') {}
 }
 
-export class SearchTodo extends ActionBase {
-    searchText = ''
-    constructor(searchText: string) {
-        super()
-        this.searchText = searchText;
-    }
-}
-
-export class HasMessage extends ActionBase {
-    constructor(){
-        super()
-    }
+export class HasMessage {
+    constructor(public type=''){}
 }
 
 export function getTodos(): Todo[] {
