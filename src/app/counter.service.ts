@@ -10,6 +10,14 @@ export class CounterService extends StateController<number>{
         super(0)
     }
 
+    override onAction(action: Action): void {
+        if(action.type==='inc'){
+            this.emit(this.state+1)
+        }
+        else if(action.type==='dec'){
+            this.emit(this.state-1)
+        }
+    }
 }
 
 
