@@ -36,6 +36,10 @@ export class CounterService extends StateController<number>{
             this.emit(this.state - 1)
         }
     }
+
+    ngOnDestroy(){
+        this.dispose();
+    }
 }
 
 

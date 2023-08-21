@@ -9,6 +9,20 @@ const _dispatcher = new BehaviorSubject<Action>({ type: '@INIT' });
 const _action$ = new Actions(_dispatcher);
 
 /**
+  * Dispatches an action to update the controller's state.
+  * @param {string | Action} actionName - The name of the action or an Action instance.
+  */
+export function dispatch(actionName: string | Action): void {
+  if (typeof actionName === 'object') {
+    _dispatcher.next(actionName);
+    return;
+  }
+  _dispatcher.next({ type: actionName });
+}
+
+export const action$ = _action$
+
+/**
  * Represents a base StateController class for managing state and actions.
  * typeparam S The type of the state managed by the controller.
  * 
@@ -128,11 +142,7 @@ export abstract class StateController<S> {
   * @param {string | Action} actionName - The name of the action or an Action instance.
   */
   dispatch(actionName: string | Action): void {
-    if (typeof actionName === 'object') {
-      _dispatcher.next(actionName);
-      return;
-    }
-    _dispatcher.next({ type: actionName });
+    dispatch(actionName)
   }
 
   /**
